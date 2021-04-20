@@ -3,7 +3,7 @@ const Sequelize = require('sequelize')
 // import connection database
 const sequelize = require('../database')
 // define model
-const Blogs = sequelize.define('blogs', {
+const Blog = sequelize.define('blogs', {
     ID: {
         type: Sequelize.INTEGER,
         primaryKey: true,
@@ -21,10 +21,11 @@ const Blogs = sequelize.define('blogs', {
         type: Sequelize.STRING,
         allowNull: false
     },
-    category: {
-        type: Sequelize.STRING,
+    categoryId: {
+        type: Sequelize.INTEGER,
+        required: true,
         allowNull: false
     },
 })
 
-module.exports = Blogs
+module.exports = Blog

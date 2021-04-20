@@ -2,6 +2,7 @@ require('dotenv').config()
 const express = require('express')
 const app = express('express')
 const blogRouter = require('./routes/blog')
+require('./database/associations')
 
 app.use(express.json())
 
