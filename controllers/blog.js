@@ -15,9 +15,8 @@ const getBlogs = async (request, response) => {
         })
         console.log(blogs)
         response.json(blogs)
-
     } catch (error) {
-        console.log('error controller.getBlogs')
+        response.status(400).json({ error: error })
     }
 }
 
@@ -46,15 +45,13 @@ const createBlog = async (request, response) => {
     const body = request.body
     const regExpImg = new RegExp(/[\/.](gif|jpg|jpeg|tiff|png)$/i)
 
-    const category = await Category.findOne({where: { name: body.category }})
-    console.log('CATEGORY', category)
-    if(!category){
-        const newCategory = await Category.create({
-            name: body.category
-        })
-        console.log('NEW CATEGORY', newCategory.ID)
+    try {
+        const category = await Category.findOne({where: { name: body.category }})
+        if(!category){
+            const newCategory = await Category.create({
+                    name: body.category
+                })  
 
-        try {
             if(regExpImg.test(body.image)){
                 const newBlog = await Blog.create({
                     title: body.title,
@@ -62,32 +59,25 @@ const createBlog = async (request, response) => {
                     image: body.image,
                     categoryId: newCategory.ID,
                 })
-
+                response.status(201).json(newBlog)
+            } else {
+                    response.status(400).json({ error: 'image url not valid'})
+            }
+        } else {        
+            if(regExpImg.test(body.image)){
+                const newBlog = await Blog.create({
+                    title: body.title,
+                    content: body.content,
+                    image: body.image,
+                    categoryId: category.ID,
+                })
                 response.status(201).json(newBlog)
             } else {
                 response.status(400).json({ error: 'image url not valid'})
             }
-        } catch (error) {
-            response.status(400).json(error)
-        }
-    }
-    
-    try {
-        if(regExpImg.test(body.image)){
-            const newBlog = await Blog.create({
-                title: body.title,
-                content: body.content,
-                image: body.image,
-                categoryId: category.ID,
-            })
-
-            response.status(201).json(newBlog)
-        } else {
-            response.status(400).json({ error: 'image url not valid'})
         }
     } catch (error) {
-        const errors = error.errors.map(e => e.message)
-        response.status(400).json(errors)
+        response.status(400).json({ error: error })
     }
 }
 
@@ -96,13 +86,47 @@ const updateBlog = async (request, response) => {
     const body = request.body
 
     try {
-        const isUpdated = await Blog.update(body, { where: { ID: id } })
-        if(isUpdated[0] === 1) {
-            const updatedBlog = await Blog.findByPk(id)
-            response.json(updatedBlog)
+        if(body.category){
+            const category = await Category.findOne({where: { name: body.category }})
+            if(!category){
+                const newCategory = await Category.create({
+                        name: body.category
+                    })
+                const isUpdated = await Blog.update({
+                    title: body.title,
+                    content: body.content,
+                    image: body.image,
+                    categoryId: newCategory.ID
+                }, { where: { ID: id } })
+                if(isUpdated[0] === 1) {
+                    const updatedBlog = await Blog.findByPk(id)
+                    response.json(updatedBlog)
+                } else {
+                    response.status(400).json({ error: 'blog or field not exist'})
+                }                 
+            } else {
+                const isUpdated = await Blog.update({
+                    title: body.title,
+                    content: body.content,
+                    image: body.image,
+                    categoryId: category.ID
+                }, { where: { ID: id } })
+                if(isUpdated[0] === 1) {
+                    const updatedBlog = await Blog.findByPk(id)
+                    response.json(updatedBlog)
+                } else {
+                    response.status(400).json({ error: 'blog or field not exist'})
+                }       
+            }
         } else {
-            response.status(400).json({ error: 'blog or field not exist'})
-        }       
+            const isUpdated = await Blog.update(body, { where: { ID: id } })
+            if(isUpdated[0] === 1) {
+                const updatedBlog = await Blog.findByPk(id)
+                response.json(updatedBlog)
+            } else {
+                response.status(400).json({ error: 'blog or field not exist'})
+            }  
+        }     
     } catch (error) {
         response.json({ error: error.message})
     }
@@ -110,14 +134,14 @@ const updateBlog = async (request, response) => {
 
 const deleteBlog = async (request, response) => {
     const id = request.params.id
-    const blogToDelete = await Blog.findByPk(id)
-    // Save categoryId of blog to delete
-    const categoryId = blogToDelete ? blogToDelete.categoryId : null
-
+    
     try {
         // Verify that blog exist
-        const blogDeleted = await Blog.findByPk(id)
-        if(blogDeleted){
+        const blogToDelete = await Blog.findByPk(id)
+        // Save categoryId of blog to delete
+        const categoryId = blogToDelete ? blogToDelete.categoryId : null
+        
+        if(blogToDelete){
             await Blog.destroy({
                 where: {
                     ID: id
